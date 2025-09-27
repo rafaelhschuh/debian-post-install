@@ -60,14 +60,14 @@ ask_yes_no() {
          case $var in
              [SsYy]* ) echo "s"; return 0;;
              [Nn]* ) echo "n"; return 0;;
-             * ) echo "Digite s ou n";;
+             * ) echo "Digite s ou n" >&2;;
          esac
     done
 }
 
 # Perguntas de configuração
 OPT_INSTALL_PLYMOUTH=$(ask_yes_no "Instalar tema Plymouth personalizado?" s)
-OPT_CONFIGURE_GRUB=n
+OPT_CONFIGURE_GRUB="n"
 if [[ "$OPT_INSTALL_PLYMOUTH" == "s" ]]; then
     OPT_CONFIGURE_GRUB=$(ask_yes_no "Configurar GRUB para boot silencioso?" s)
 fi
