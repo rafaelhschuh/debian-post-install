@@ -28,7 +28,23 @@ log_success() {
 }
 
 log_step() {
-    echo -e "${BLUE}[ETAPA]${NC} $1"
+    echo -eecho ""
+log_warn "📋 PRÓXIMOS PASSOS:"
+if [[ "${PLYMOUTH_INSTALLED:-false}" == true || "${GRUB_THEME_INSTALLED:-false}" == true || "${GRUB_CONFIGURED:-false}" == true ]]; then
+    echo "  1. REINICIE o sistema para ver as mudanças"
+    if [[ "${PLYMOUTH_INSTALLED:-false}" == true ]]; then
+        echo "  2. Tema Plymouth aparecerá durante boot/shutdown"
+    fi
+    if [[ "${GRUB_THEME_INSTALLED:-false}" == true ]]; then
+        echo "  2. Tema GRUB aparecerá no menu de boot"
+    fi
+    if [[ "${GRUB_CONFIGURED:-false}" == true ]]; then
+        echo "  3. Boot será automático e silencioso"
+        echo "  4. Menu GRUB acessível segurando SHIFT durante boot"
+    fi
+else
+    echo "  1. Execute novamente o script para configurar Plymouth/GRUB"
+fiA]${NC} $1"
 }
 
 # Verificar se está sendo executado como root
@@ -74,11 +90,13 @@ ask_yes_no() {
 
 # Perguntas de configuração
 OPT_INSTALL_PLYMOUTH=$(ask_yes_no "Instalar tema Plymouth personalizado?" s)
+OPT_INSTALL_GRUB_THEME=$(ask_yes_no "Instalar tema GRUB personalizado?" s)
 OPT_CONFIGURE_GRUB=$(ask_yes_no "Configurar GRUB para boot silencioso?" s)
 
 echo ""
 log_step "Resumo das escolhas"
 echo "  Instalar Plymouth:     $OPT_INSTALL_PLYMOUTH"
+echo "  Instalar tema GRUB:    $OPT_INSTALL_GRUB_THEME"
 echo "  Configurar GRUB:       $OPT_CONFIGURE_GRUB"
 echo ""
 if ! $AUTO_MODE; then
@@ -285,6 +303,99 @@ else
     PLYMOUTH_INSTALLED=false
 fi
 
+# ================= INSTALAÇÃO TEMA GRUB =================
+if [[ "$OPT_INSTALL_GRUB_THEME" == "s" ]]; then
+    log_step "Instalando tema GRUB personalizado..."
+    
+    # Configuração do tema GRUB
+    GRUB_THEME_URL="https://raw.githubusercontent.com/rafaelhschuh/debian-post-install/refs/heads/main/Debian.tar.gz"
+    GRUB_THEMES_DIR="/boot/grub/themes"
+    GRUB_THEME_NAME="debian"
+    TMP_GRUB_DIR="/tmp/grub_theme_install_$$"
+
+    # Criar diretório temporário
+    mkdir -p "$TMP_GRUB_DIR"
+    log_info "Diretório temporário para GRUB criado: $TMP_GRUB_DIR"
+
+    # Função de limpeza para GRUB
+    cleanup_grub() {
+        log_info "Limpando arquivos temporários do GRUB..."
+        rm -rf "$TMP_GRUB_DIR"
+    }
+    trap cleanup_grub EXIT
+
+    # Baixar tema GRUB
+    log_info "Baixando tema GRUB..."
+    if curl -fsSL "$GRUB_THEME_URL" -o "$TMP_GRUB_DIR/theme.tar.gz"; then
+        log_success "Tema GRUB baixado com sucesso"
+    else
+        log_error "Falha ao baixar tema GRUB. Verifique a URL ou conectividade."
+        GRUB_THEME_INSTALLED=false
+    fi
+
+    if [[ "${GRUB_THEME_INSTALLED:-true}" != false ]]; then
+        # Verificar se o arquivo é válido
+        if ! tar -tzf "$TMP_GRUB_DIR/theme.tar.gz" >/dev/null 2>&1; then
+            log_error "Arquivo tar.gz inválido ou corrompido"
+            GRUB_THEME_INSTALLED=false
+        else
+            # Extrair tema GRUB
+            log_info "Extraindo tema GRUB..."
+            tar -xzf "$TMP_GRUB_DIR/theme.tar.gz" -C "$TMP_GRUB_DIR/"
+
+            # Criar diretório de temas GRUB se não existir
+            mkdir -p "$GRUB_THEMES_DIR"
+
+            # Procurar diretório do tema extraído
+            EXTRACTED_THEME_DIR=""
+            if [[ -d "$TMP_GRUB_DIR/Debian" ]]; then
+                EXTRACTED_THEME_DIR="$TMP_GRUB_DIR/Debian"
+            elif [[ -d "$TMP_GRUB_DIR/debian" ]]; then
+                EXTRACTED_THEME_DIR="$TMP_GRUB_DIR/debian"
+            else
+                # Procurar por qualquer diretório com theme.txt
+                EXTRACTED_THEME_DIR=$(find "$TMP_GRUB_DIR" -name "theme.txt" -type f -exec dirname {} \; | head -n1)
+            fi
+
+            if [[ -n "$EXTRACTED_THEME_DIR" ]]; then
+                # Instalar tema GRUB
+                GRUB_THEME_DEST="$GRUB_THEMES_DIR/$GRUB_THEME_NAME"
+                log_info "Instalando tema GRUB em: $GRUB_THEME_DEST"
+                
+                # Remover tema existente se houver
+                if [[ -d "$GRUB_THEME_DEST" ]]; then
+                    log_warn "Tema GRUB $GRUB_THEME_NAME já existe. Substituindo..."
+                    rm -rf "$GRUB_THEME_DEST"
+                fi
+
+                # Copiar arquivos do tema
+                cp -r "$EXTRACTED_THEME_DIR" "$GRUB_THEME_DEST"
+                log_success "Tema GRUB copiado com sucesso"
+
+                # Configurar permissões
+                chmod -R 644 "$GRUB_THEME_DEST"/*
+                find "$GRUB_THEME_DEST" -type d -exec chmod 755 {} \;
+                log_success "Permissões do tema GRUB configuradas"
+
+                # Verificar se existe theme.txt
+                if [[ -f "$GRUB_THEME_DEST/theme.txt" ]]; then
+                    log_success "Arquivo theme.txt encontrado"
+                    GRUB_THEME_INSTALLED=true
+                else
+                    log_warn "Arquivo theme.txt não encontrado. Tema pode não funcionar corretamente."
+                    GRUB_THEME_INSTALLED=true
+                fi
+            else
+                log_error "Estrutura do tema GRUB não encontrada no arquivo baixado"
+                GRUB_THEME_INSTALLED=false
+            fi
+        fi
+    fi
+else
+    log_info "Instalação do tema GRUB foi pulada"
+    GRUB_THEME_INSTALLED=false
+fi
+
 # ================= CONFIGURAÇÃO GRUB =================
 if [[ "$OPT_CONFIGURE_GRUB" == "s" ]]; then
     log_step "Configurando GRUB para boot silencioso..."
@@ -303,13 +414,21 @@ if [[ "$OPT_CONFIGURE_GRUB" == "s" ]]; then
 
     # Remover ou comentar configurações conflitantes e adicionar novas
     {
-        grep -v "^GRUB_TIMEOUT\|^GRUB_TIMEOUT_STYLE\|^GRUB_HIDDEN_TIMEOUT\|^GRUB_RECORDFAIL_TIMEOUT\|^GRUB_CMDLINE_LINUX_DEFAULT" "$GRUB_CONFIG" 2>/dev/null || true
+        grep -v "^GRUB_TIMEOUT\|^GRUB_TIMEOUT_STYLE\|^GRUB_HIDDEN_TIMEOUT\|^GRUB_RECORDFAIL_TIMEOUT\|^GRUB_CMDLINE_LINUX_DEFAULT\|^GRUB_THEME" "$GRUB_CONFIG" 2>/dev/null || true
         echo ""
         echo "# Configurações para boot silencioso e rápido"
         echo "GRUB_TIMEOUT=0"
         echo "GRUB_TIMEOUT_STYLE=hidden"
         echo "GRUB_RECORDFAIL_TIMEOUT=2"
         echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"'
+        
+        # Adicionar tema GRUB se foi instalado
+        if [[ "${GRUB_THEME_INSTALLED:-false}" == true ]]; then
+            echo ""
+            echo "# Tema GRUB personalizado"
+            echo "GRUB_THEME=\"$GRUB_THEMES_DIR/$GRUB_THEME_NAME/theme.txt\""
+        fi
+        
         echo ""
         echo "# Para acessar menu GRUB: segure SHIFT durante boot"
     } > "${GRUB_CONFIG}.tmp"
@@ -350,12 +469,20 @@ if [[ "${PLYMOUTH_INSTALLED:-false}" == true ]]; then
     echo "  ✓ Initramfs atualizado"
 fi
 
+if [[ "${GRUB_THEME_INSTALLED:-false}" == true ]]; then
+    echo "  ✓ Tema GRUB instalado: $GRUB_THEME_NAME"
+    echo "  ✓ Localização: $GRUB_THEMES_DIR/$GRUB_THEME_NAME"
+fi
+
 if [[ "${GRUB_CONFIGURED:-false}" == true ]]; then
     echo "  ✓ GRUB configurado para boot silencioso"
     echo "  ✓ Timeout GRUB: 0 segundos"
+    if [[ "${GRUB_THEME_INSTALLED:-false}" == true ]]; then
+        echo "  ✓ Tema GRUB aplicado automaticamente"
+    fi
 fi
 
-if [[ "${PLYMOUTH_INSTALLED:-false}" == false && "${GRUB_CONFIGURED:-false}" == false ]]; then
+if [[ "${PLYMOUTH_INSTALLED:-false}" == false && "${GRUB_THEME_INSTALLED:-false}" == false && "${GRUB_CONFIGURED:-false}" == false ]]; then
     echo "  ⚪ Nenhuma configuração foi alterada"
 fi
 
@@ -380,8 +507,14 @@ if [[ "${PLYMOUTH_INSTALLED:-false}" == true ]]; then
     echo "  • Listar temas Plymouth: plymouth-set-default-theme --list"
     echo "  • Testar tema: sudo plymouthd; sudo plymouth --show-splash; sleep 3; sudo plymouth quit"
 fi
+if [[ "${GRUB_THEME_INSTALLED:-false}" == true ]]; then
+    echo "  • Verificar tema GRUB: grep GRUB_THEME /etc/default/grub"
+    echo "  • Listar temas: ls -la /boot/grub/themes/"
+    echo "  • Remover tema: sudo rm -rf /boot/grub/themes/$GRUB_THEME_NAME && sudo update-grub"
+fi
 if [[ "${GRUB_CONFIGURED:-false}" == true ]]; then
     echo "  • Restaurar GRUB: sudo cp ${GRUB_BACKUP:-/etc/default/grub.backup.*} /etc/default/grub && sudo update-grub"
+    echo "  • Atualizar GRUB: sudo update-grub"
 fi
 echo ""
 log_success "🚀 Sistema configurado com sucesso!"
