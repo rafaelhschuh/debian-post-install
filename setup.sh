@@ -181,7 +181,6 @@ OPT_NVIDIA_CUDA=n
 if [[ "$OPT_DRIVERS_NVIDIA" == "s" ]]; then
     OPT_NVIDIA_CUDA=$(ask_yes_no "Adicionar suporte CUDA?" n)
 fi
-OPT_RUN_CUSTOMIZE=$(ask_yes_no "Executar script de customização do GNOME ao final?" s)
 
 echo ""; log_step "Resumo das escolhas"
 echo "  deb-multimedia:        $OPT_DEB_MULTIMEDIA"
@@ -192,7 +191,6 @@ echo "  Linux Toys:            $OPT_LINUX_TOYS"
 echo "  Drivers Intel:         $OPT_DRIVERS_INTEL"
 echo "  Drivers AMD:           $OPT_DRIVERS_AMD"
 echo "  Drivers NVIDIA:        $OPT_DRIVERS_NVIDIA (CUDA: $OPT_NVIDIA_CUDA)"
-echo "  Customização GNOME:    $OPT_RUN_CUSTOMIZE"
 echo ""
 if ! $AUTO_MODE; then
     read -p "Pressione ENTER para iniciar ou Ctrl+C para cancelar..." _
@@ -439,23 +437,7 @@ log_step "Realizando limpeza final..."
 apt autoremove -y && apt autoclean
 log_success "Limpeza concluída."
 
-# Executar customização do GNOME (decisão prévia)
-if [[ "$OPT_RUN_CUSTOMIZE" == "s" ]]; then
-    log_step "Executando customização do GNOME (como usuário $SUDO_USER)..."
-    USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6 2>/dev/null || echo "/home/$SUDO_USER")
-    if [[ ! -d "$USER_HOME" ]]; then
-        log_warn "Home $USER_HOME não encontrada; pulando customização."
-    else
-        log_info "Executando como $SUDO_USER com HOME=$USER_HOME"
-        # Usar sudo -i para simular login completo do usuário
-        if sudo -i -u "$SUDO_USER" bash -c "curl -fsSL $GITHUB_CUSTOMIZE_URL | bash"; then
-            log_success "Customização do GNOME executada com sucesso (usuário $SUDO_USER)"
-        else
-            log_warn "Falha na customização do GNOME. Execute manualmente:"
-            echo "  sudo -i -u $SUDO_USER bash -c 'curl -fsSL $GITHUB_CUSTOMIZE_URL | bash'"
-        fi
-    fi
-fi
+
 
 # Resumo final dinâmico
 echo ""
@@ -498,9 +480,6 @@ if [[ "$OPT_DRIVERS_NVIDIA" == "s" ]]; then
         echo "  ⚠ Selecionado NVIDIA mas nenhuma GPU detectada"
     fi
 fi
-if [[ "$OPT_RUN_CUSTOMIZE" == "s" ]]; then
-    echo "  ✓ Customização GNOME executada"
-fi
 echo ""
 log_warn "📋 PRÓXIMOS PASSOS RECOMENDADOS:"
 echo "  1. REINICIE o sistema para ativar todos os drivers"
@@ -513,5 +492,6 @@ log_info "💡 COMANDOS ÚTEIS:"
 echo "  • Atualizar sistema: sudo apt update && sudo apt upgrade"
 echo "  • Atualizar Flatpak: flatpak update"
 echo "  • Gerenciar extensões: gnome-extensions list"
+echo "  • Customizar GNOME: curl -fsSL $GITHUB_CUSTOMIZE_URL | bash"
 echo ""
 log_success "🚀 Sistema Debian pronto para uso! Aproveite!"
