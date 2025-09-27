@@ -65,7 +65,8 @@ curl -fsSL https://raw.githubusercontent.com/rafaelhschuh/debian-post-install/re
 
 # Ou baixar e executar
 wget https://raw.githubusercontent.com/rafaelhschuh/debian-post-install/refs/heads/main/customize.sh
-bash customize.sh
+chmod +x ./customize.sh
+bash ./customize.sh
 ```
 
 

@@ -342,7 +342,7 @@ if [[ "$OPT_INSTALL_FLATPAK_APPS" == "s" ]]; then
     for app in "${FLATPAK_APPS[@]}"; do
         if ! flatpak list | grep -Fq "$app"; then
             log_info "Instalando $app..."
-            if flatpak install --noninteractive -y flathub "$app" >/dev/null 2>&1; then
+            if flatpak install -y flathub "$app"; then
                 log_success "$app instalado"
             else
                 log_warn "Falha ao instalar $app (pode não estar disponível)"
