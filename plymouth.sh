@@ -365,6 +365,27 @@ if [[ "$OPT_INSTALL_GRUB_THEME" == "s" ]]; then
                 if [[ -f "$GRUB_THEME_DEST/theme.txt" ]]; then
                     log_success "Arquivo theme.txt encontrado"
                     GRUB_THEME_INSTALLED=true
+                    
+                    # Aplicar tema GRUB automaticamente
+                    log_info "Aplicando tema GRUB ao sistema..."
+                    GRUB_CONFIG="/etc/default/grub"
+                    
+                    # Remover configurações antigas do tema
+                    sed -i '/^GRUB_THEME=/d' "$GRUB_CONFIG" 2>/dev/null || true
+                    
+                    # Adicionar nova configuração do tema
+                    echo "GRUB_THEME=\"$GRUB_THEME_DEST/theme.txt\"" >> "$GRUB_CONFIG"
+                    log_success "Tema GRUB configurado em /etc/default/grub"
+                    
+                    # Atualizar GRUB
+                    log_info "Atualizando configuração do GRUB..."
+                    if update-grub 2>/dev/null; then
+                        log_success "GRUB atualizado - tema aplicado"
+                    elif grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null; then
+                        log_success "GRUB atualizado com comando alternativo"
+                    else
+                        log_warn "Falha ao atualizar GRUB. Execute manualmente: sudo update-grub"
+                    fi
                 else
                     log_warn "Arquivo theme.txt não encontrado. Tema pode não funcionar corretamente."
                     GRUB_THEME_INSTALLED=true
