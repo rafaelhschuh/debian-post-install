@@ -338,6 +338,7 @@ if [[ "$OPT_INSTALL_FLATPAK_APPS" == "s" ]]; then
         "it.mijorus.gearlever"
         "com.termius.Termius"
         "com.spotify.Client"
+        "com.mattjakeman.ExtensionManager"
     )
     
     for app in "${FLATPAK_APPS[@]}"; do
@@ -440,25 +441,18 @@ log_success "Limpeza concluída."
 
 # Executar customização do GNOME (decisão prévia)
 if [[ "$OPT_RUN_CUSTOMIZE" == "s" ]]; then
-    log_step "Executando customização do GNOME..."
-    log_info "Baixando e executando script de customização..."
-    
-    # Montar comando conforme modo automático
-    if $AUTO_MODE; then
-        CUSTOMIZE_PIPE="curl -fsSL $GITHUB_CUSTOMIZE_URL | bash -s -- --auto"
+    log_step "Executando customização do GNOME (como usuário $SUDO_USER)..."
+    USER_HOME=$(eval echo ~"$SUDO_USER" 2>/dev/null || echo "/home/$SUDO_USER")
+    if [[ ! -d "$USER_HOME" ]]; then
+        log_warn "Home $USER_HOME não encontrada; pulando customização."
     else
-        CUSTOMIZE_PIPE="curl -fsSL $GITHUB_CUSTOMIZE_URL | bash"
-    fi
-
-    # Executar como usuário normal, não como root
-    if sudo -u "$SUDO_USER" bash -c "$CUSTOMIZE_PIPE"; then
-        log_success "Customização do GNOME executada com sucesso"
-    else
-        log_warn "Falha na customização do GNOME. Execute manualmente se necessário:"
-        if $AUTO_MODE; then
-            echo "  curl -fsSL $GITHUB_CUSTOMIZE_URL | bash -s -- --auto"
+        CUSTOMIZE_CMD="curl -fsSL $GITHUB_CUSTOMIZE_URL | bash"
+        # Exportar HOME explicitamente para evitar herdar /root
+        if sudo -u "$SUDO_USER" HOME="$USER_HOME" bash -c "$CUSTOMIZE_CMD"; then
+            log_success "Customização do GNOME executada com sucesso (usuário $SUDO_USER)"
         else
-            echo "  curl -fsSL $GITHUB_CUSTOMIZE_URL | bash"
+            log_warn "Falha na customização do GNOME. Execute manualmente como $SUDO_USER se necessário:"
+            echo "  sudo -u $SUDO_USER HOME=$USER_HOME bash -c 'curl -fsSL $GITHUB_CUSTOMIZE_URL | bash'"
         fi
     fi
 fi
