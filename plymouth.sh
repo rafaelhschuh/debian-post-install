@@ -38,32 +38,30 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Verificar se Plymouth está instalado
-if ! command -v plymouth-set-default-theme &> /dev/null; then
-    log_info "Plymouth não está instalado. Instalando..."
-    apt update && apt install -y plymouth plymouth-themes
-fi
+# Verificar se Plymouth está instalado e instalar dependências completas
+log_info "Verificando e instalando Plymouth com todas as dependências..."
+apt update
 
-# Verificar e instalar dependências necessárias do Plymouth
-log_info "Verificando dependências do Plymouth..."
 PLYMOUTH_PACKAGES=(
     "plymouth"
     "plymouth-themes" 
     "libplymouth5"
     "plymouth-label"
+    "plymouth-x11"
 )
 
+# Instalar/reinstalar todos os pacotes necessários
 for package in "${PLYMOUTH_PACKAGES[@]}"; do
-    if ! dpkg -l | grep -q "^ii  $package "; then
-        log_info "Instalando $package..."
-        apt install -y "$package" || log_warn "Falha ao instalar $package"
-    fi
+    log_info "Instalando/reinstalando $package..."
+    apt install --reinstall -y "$package" 2>/dev/null || apt install -y "$package" 2>/dev/null || log_warn "Falha ao instalar $package"
 done
 
-# Verificar se o módulo two-step existe, se não, tentar reinstalar
+# Verificar se o módulo two-step existe após instalação
 if [[ ! -f "/usr/lib/x86_64-linux-gnu/plymouth/two-step.so" ]]; then
-    log_warn "Módulo two-step.so não encontrado. Reinstalando Plymouth..."
-    apt install --reinstall -y plymouth plymouth-themes libplymouth5
+    log_warn "Módulo two-step.so ainda não encontrado. Tentando reconstruir..."
+    # Tentar reconstruir módulos plymouth
+    dpkg-reconfigure plymouth 2>/dev/null || true
+    update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth /usr/share/plymouth/themes/spinner/spinner.plymouth 100 2>/dev/null || true
 fi
 
 # Configuração do tema
@@ -172,19 +170,47 @@ if ! grep -q "\[Plymouth Theme\]" "$PLYMOUTH_CONFIG"; then
     log_warn "Arquivo .plymouth pode estar malformado"
 fi
 
-# Aplicar tema
+# Diagnóstico antes de aplicar tema
+log_info "Executando diagnósticos Plymouth..."
+log_info "Módulos Plymouth disponíveis:"
+find /usr/lib/x86_64-linux-gnu/plymouth/ -name "*.so" 2>/dev/null | head -5 || log_warn "Diretório de módulos não encontrado"
+
+# Verificar se o tema específico tem problemas
+log_info "Testando configuração do tema..."
+if plymouth-set-default-theme --list | grep -q "^$THEME_NAME$"; then
+    log_success "Tema $THEME_NAME encontrado na lista"
+else
+    log_warn "Tema $THEME_NAME não aparece na lista oficial"
+fi
+
+# Aplicar tema com múltiplas tentativas
 log_info "Configurando tema $THEME_NAME como padrão..."
+
+# Primeira tentativa: tema personalizado
 if plymouth-set-default-theme "$THEME_NAME" 2>/dev/null; then
     log_success "Tema $THEME_NAME definido como padrão"
+    THEME_SUCCESS=true
 else
-    log_warn "Falha ao definir tema personalizado. Tentando tema padrão..."
-    # Fallback para um tema que sabemos que funciona
-    if plymouth-set-default-theme bgrt 2>/dev/null || plymouth-set-default-theme spinner 2>/dev/null; then
-        log_info "Tema padrão configurado como fallback"
-    else
+    log_warn "Falha ao definir tema personalizado. Erro detectado:"
+    plymouth-set-default-theme "$THEME_NAME" 2>&1 | head -3 || true
+    THEME_SUCCESS=false
+    
+    # Segunda tentativa: temas padrão funcionais
+    log_warn "Tentando temas padrão como fallback..."
+    for fallback_theme in "spinner" "text" "details"; do
+        if plymouth-set-default-theme "$fallback_theme" 2>/dev/null; then
+            log_info "Tema fallback '$fallback_theme' configurado"
+            THEME_SUCCESS=true
+            break
+        fi
+    done
+    
+    if [[ "$THEME_SUCCESS" == false ]]; then
         log_error "Erro crítico: não foi possível configurar nenhum tema Plymouth"
-        log_info "Listando arquivos em $DEST_DIR:"
-        ls -la "$DEST_DIR"
+        log_info "Listando conteúdo de $DEST_DIR:"
+        ls -la "$DEST_DIR" 2>/dev/null || true
+        log_info "Conteúdo do arquivo .plymouth:"
+        head -10 "$PLYMOUTH_CONFIG" 2>/dev/null || true
         exit 1
     fi
 fi
