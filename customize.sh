@@ -19,13 +19,13 @@ echo "[3/3] Aplicando ajustes GNOME básicos..."
 gsettings set org.gnome.desktop.interface show-battery-percentage true 2>/dev/null || true
 gsettings set org.gnome.desktop.interface clock-show-weekday true 2>/dev/null || true
 gsettings set org.gnome.desktop.interface clock-show-seconds false 2>/dev/null || true
-( gsettings set org.gnome.desktop.wm.preferences button-layout 'appmenu:minimize,maximize,close' 2>/dev/null || \
-  gsettings set org.gnome.desktop.wm.preferences button-layout 'close,minimize,maximize' 2>/dev/null ) || true
+gsettings set org.gnome.desktop.wm.preferences button-layout 'appmenu:minimize,maximize,close' 2>/dev/null || \
+  gsettings set org.gnome.desktop.wm.preferences button-layout 'close,minimize,maximize' 2>/dev/null || true
 gsettings set org.gnome.nautilus.preferences default-folder-viewer 'list-view' 2>/dev/null || true
 gsettings set org.gnome.nautilus.preferences show-hidden-files true 2>/dev/null || true
 gsettings set org.gnome.desktop.privacy report-technical-problems false 2>/dev/null || true
 gsettings set org.gnome.SessionManager logout-prompt true 2>/dev/null || true
 gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 3600 2>/dev/null || true
 gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-timeout 1800 2>/dev/null || true
-gsettings set org.gnome.desktop.interface clock-show-seconds true 2>/dev/null || true
+
 echo "Pronto. Pastas extraídas e ajustes aplicados. Ative manualmente extensões após reiniciar a sessão do GNOME (logout/login)."

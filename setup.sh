@@ -442,17 +442,21 @@ log_success "Limpeza concluída."
 # Executar customização do GNOME (decisão prévia)
 if [[ "$OPT_RUN_CUSTOMIZE" == "s" ]]; then
     log_step "Executando customização do GNOME (como usuário $SUDO_USER)..."
-    USER_HOME=$(eval echo ~"$SUDO_USER" 2>/dev/null || echo "/home/$SUDO_USER")
+    USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6 2>/dev/null || echo "/home/$SUDO_USER")
     if [[ ! -d "$USER_HOME" ]]; then
         log_warn "Home $USER_HOME não encontrada; pulando customização."
     else
-        CUSTOMIZE_CMD="curl -fsSL $GITHUB_CUSTOMIZE_URL | bash"
-        # Exportar HOME explicitamente para evitar herdar /root
-        if sudo -u "$SUDO_USER" HOME="$USER_HOME" bash -c "$CUSTOMIZE_CMD"; then
+        log_info "Executando como $SUDO_USER com HOME=$USER_HOME"
+        # Definir variáveis necessárias para sessão de usuário
+        if sudo -u "$SUDO_USER" \
+            HOME="$USER_HOME" \
+            USER="$SUDO_USER" \
+            LOGNAME="$SUDO_USER" \
+            bash -c "cd '$USER_HOME' && curl -fsSL $GITHUB_CUSTOMIZE_URL | bash"; then
             log_success "Customização do GNOME executada com sucesso (usuário $SUDO_USER)"
         else
-            log_warn "Falha na customização do GNOME. Execute manualmente como $SUDO_USER se necessário:"
-            echo "  sudo -u $SUDO_USER HOME=$USER_HOME bash -c 'curl -fsSL $GITHUB_CUSTOMIZE_URL | bash'"
+            log_warn "Falha na customização do GNOME. Execute manualmente:"
+            echo "  sudo -u $SUDO_USER bash -c 'cd && curl -fsSL $GITHUB_CUSTOMIZE_URL | bash'"
         fi
     fi
 fi
