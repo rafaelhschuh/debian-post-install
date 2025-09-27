@@ -306,13 +306,13 @@ fi
 # Remoção do Firefox ESR (decisão prévia)
 if [[ "$OPT_REMOVE_FIREFOX" == "s" ]]; then
     log_step "Removendo Firefox ESR..."
-    if dpkg -l | grep -q "^ii  firefox-esr "; then
-        apt purge -y firefox-esr || log_warn "Falha ao remover Firefox ESR"
-        apt autoremove -y && apt autoclean
+    log_info "Removendo Firefox ESR..."
+    if apt purge -y firefox-esr; then
         log_success "Firefox ESR removido."
     else
-        log_info "Firefox ESR não está instalado."
+        log_warn "Falha ao remover o Firefox ESR. Verifique manualmente."
     fi
+    apt autoremove -y && apt autoclean
 fi
 
 # Setup de Flatpak
@@ -361,26 +361,19 @@ if [[ "$OPT_INSTALL_FLATPAK_APPS" == "s" ]]; then
     done
 fi
 
+
 # Instalação do Linux Toys (decisão prévia)
+
+
 if [[ "$OPT_LINUX_TOYS" == "s" ]]; then
     log_step "Instalando Linux Toys..."
-    log_info "Baixando e executando instalador do Linux Toys (não-interativo)..."
-    if curl -fsSL https://raw.githubusercontent.com/psygreg/linuxtoys/master/install.sh -o /tmp/linuxtoys-install.sh; then
-        chmod +x /tmp/linuxtoys-install.sh
-        if yes | /tmp/linuxtoys-install.sh >/dev/null 2>&1; then
-            log_success "Linux Toys instalado com sucesso"
-        else
-            log_warn "Falha ao instalar Linux Toys"
-        fi
-        rm -f /tmp/linuxtoys-install.sh
+    log_info "Baixando e executando instalador do Linux Toys..."
+    if yes | sh -c "$(curl -fsSL https://raw.githubusercontent.com/psygreg/linuxtoys/master/install.sh)"; then
+        log_success "Linux Toys instalado com sucesso"
     else
-        log_warn "Download do instalador do Linux Toys falhou"
+        log_info "Não foi possivel determinar se o Linux Toys foi instalado corretamente, verifique manualmente."
     fi
 fi
-
-
-
-
 
 # Setup drivers com validação
 log_step "Configurando drivers..."
