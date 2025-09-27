@@ -40,8 +40,30 @@ fi
 
 # Verificar se Plymouth está instalado
 if ! command -v plymouth-set-default-theme &> /dev/null; then
-    log_error "Plymouth não está instalado. Instalando..."
+    log_info "Plymouth não está instalado. Instalando..."
     apt update && apt install -y plymouth plymouth-themes
+fi
+
+# Verificar e instalar dependências necessárias do Plymouth
+log_info "Verificando dependências do Plymouth..."
+PLYMOUTH_PACKAGES=(
+    "plymouth"
+    "plymouth-themes" 
+    "libplymouth5"
+    "plymouth-label"
+)
+
+for package in "${PLYMOUTH_PACKAGES[@]}"; do
+    if ! dpkg -l | grep -q "^ii  $package "; then
+        log_info "Instalando $package..."
+        apt install -y "$package" || log_warn "Falha ao instalar $package"
+    fi
+done
+
+# Verificar se o módulo two-step existe, se não, tentar reinstalar
+if [[ ! -f "/usr/lib/x86_64-linux-gnu/plymouth/two-step.so" ]]; then
+    log_warn "Módulo two-step.so não encontrado. Reinstalando Plymouth..."
+    apt install --reinstall -y plymouth plymouth-themes libplymouth5
 fi
 
 # Configuração do tema
@@ -133,13 +155,38 @@ log_success "Permissões configuradas"
 log_info "Temas Plymouth disponíveis:"
 plymouth-set-default-theme --list
 
+# Verificar se o arquivo .plymouth está válido
+PLYMOUTH_CONFIG="$DEST_DIR/$THEME_NAME.plymouth"
+if [[ ! -f "$PLYMOUTH_CONFIG" ]]; then
+    # Procurar por qualquer arquivo .plymouth no diretório
+    PLYMOUTH_CONFIG=$(find "$DEST_DIR" -name "*.plymouth" -type f | head -n1)
+    if [[ -z "$PLYMOUTH_CONFIG" ]]; then
+        log_error "Arquivo de configuração .plymouth não encontrado"
+        exit 1
+    fi
+fi
+
+# Verificar se o conteúdo do arquivo .plymouth está correto
+log_info "Validando arquivo de configuração: $PLYMOUTH_CONFIG"
+if ! grep -q "\[Plymouth Theme\]" "$PLYMOUTH_CONFIG"; then
+    log_warn "Arquivo .plymouth pode estar malformado"
+fi
+
 # Aplicar tema
 log_info "Configurando tema $THEME_NAME como padrão..."
-if plymouth-set-default-theme "$THEME_NAME"; then
+if plymouth-set-default-theme "$THEME_NAME" 2>/dev/null; then
     log_success "Tema $THEME_NAME definido como padrão"
 else
-    log_error "Falha ao definir tema. Verifique se o tema está instalado corretamente."
-    exit 1
+    log_warn "Falha ao definir tema personalizado. Tentando tema padrão..."
+    # Fallback para um tema que sabemos que funciona
+    if plymouth-set-default-theme bgrt 2>/dev/null || plymouth-set-default-theme spinner 2>/dev/null; then
+        log_info "Tema padrão configurado como fallback"
+    else
+        log_error "Erro crítico: não foi possível configurar nenhum tema Plymouth"
+        log_info "Listando arquivos em $DEST_DIR:"
+        ls -la "$DEST_DIR"
+        exit 1
+    fi
 fi
 
 # Atualizar initramfs
