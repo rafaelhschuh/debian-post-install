@@ -40,7 +40,7 @@ fi
 # ================= COLETA DE OPÇÕES =================
 log_step "Coletando preferências de instalação"
 
-# Se flag --auto foi passada, definir defaults
+# Detectar se está em modo automático ou não-interativo
 AUTO_MODE=${AUTO_MODE:-false}
 for arg in "$@"; do
     if [[ "$arg" == "--auto" ]]; then
@@ -48,9 +48,16 @@ for arg in "$@"; do
     fi
 done
 
+# Detectar se não há terminal interativo (executado via curl/pipe)
+if [[ ! -t 0 ]] && [[ "$AUTO_MODE" == false ]]; then
+    log_warn "Executado via pipe/curl - usando configurações padrão"
+    AUTO_MODE=true
+fi
+
 ask_yes_no() {
     local prompt="$1"; local default="$2"; local var
     if $AUTO_MODE; then
+         log_info "$prompt -> usando padrão: $default"
          echo "$default"
          return 0
     fi
@@ -67,10 +74,7 @@ ask_yes_no() {
 
 # Perguntas de configuração
 OPT_INSTALL_PLYMOUTH=$(ask_yes_no "Instalar tema Plymouth personalizado?" s)
-OPT_CONFIGURE_GRUB="n"
-if [[ "$OPT_INSTALL_PLYMOUTH" == "s" ]]; then
-    OPT_CONFIGURE_GRUB=$(ask_yes_no "Configurar GRUB para boot silencioso?" s)
-fi
+OPT_CONFIGURE_GRUB=$(ask_yes_no "Configurar GRUB para boot silencioso?" s)
 
 echo ""
 log_step "Resumo das escolhas"
@@ -79,6 +83,8 @@ echo "  Configurar GRUB:       $OPT_CONFIGURE_GRUB"
 echo ""
 if ! $AUTO_MODE; then
     read -p "Pressione ENTER para iniciar ou Ctrl+C para cancelar..." _
+else
+    log_info "Iniciando automaticamente..."
 fi
 
 # ================= INSTALAÇÃO PLYMOUTH =================
