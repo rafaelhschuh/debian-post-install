@@ -227,20 +227,109 @@ fi
 CURRENT_THEME=$(plymouth-set-default-theme)
 log_success "Tema Plymouth atual: $CURRENT_THEME"
 
+# Perguntar sobre configuração do GRUB
+echo ""
+log_step "Configuração opcional do GRUB"
+echo ""
+log_info "Deseja configurar o GRUB para boot silencioso e rápido?"
+echo "  • Remove espera de 5 segundos no menu"
+echo "  • Boot automático direto para o sistema"
+echo "  • Menu acessível segurando SHIFT durante boot"
+echo ""
+read -p "Configurar GRUB silencioso? (s/n): " -n 1 -r
+echo ""
+
+if [[ $REPLY =~ ^[SsYy]$ ]]; then
+    log_step "Configurando GRUB para boot silencioso..."
+
+    GRUB_CONFIG="/etc/default/grub"
+    GRUB_BACKUP="/etc/default/grub.backup.$(date +%Y%m%d_%H%M%S)"
+
+    # Fazer backup do arquivo original
+    if [[ -f "$GRUB_CONFIG" ]]; then
+        cp "$GRUB_CONFIG" "$GRUB_BACKUP"
+        log_info "Backup do GRUB criado: $GRUB_BACKUP"
+    fi
+
+    # Configurações do GRUB para boot silencioso
+    log_info "Aplicando configurações de boot silencioso..."
+
+    # Remover ou comentar configurações conflitantes e adicionar novas
+    {
+        grep -v "^GRUB_TIMEOUT\|^GRUB_TIMEOUT_STYLE\|^GRUB_HIDDEN_TIMEOUT\|^GRUB_RECORDFAIL_TIMEOUT\|^GRUB_CMDLINE_LINUX_DEFAULT" "$GRUB_CONFIG" 2>/dev/null || true
+        echo ""
+        echo "# Configurações para boot silencioso e rápido"
+        echo "GRUB_TIMEOUT=0"
+        echo "GRUB_TIMEOUT_STYLE=hidden"
+        echo "GRUB_RECORDFAIL_TIMEOUT=2"
+        echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"'
+        echo ""
+        echo "# Para acessar menu GRUB: segure SHIFT durante boot"
+    } > "${GRUB_CONFIG}.tmp"
+
+    # Substituir arquivo original
+    mv "${GRUB_CONFIG}.tmp" "$GRUB_CONFIG"
+    log_success "Configurações GRUB aplicadas"
+
+    # Atualizar configuração do GRUB
+    log_info "Atualizando configuração do GRUB..."
+    if update-grub 2>/dev/null; then
+        log_success "GRUB atualizado com sucesso"
+        GRUB_CONFIGURED=true
+    else
+        log_warn "Falha ao atualizar GRUB. Tentando comando alternativo..."
+        if grub-mkconfig -o /boot/grub/grub.cfg 2>/dev/null; then
+            log_success "GRUB atualizado com comando alternativo"
+            GRUB_CONFIGURED=true
+        else
+            log_error "Falha ao atualizar GRUB. Configuração pode não ter efeito."
+            GRUB_CONFIGURED=false
+        fi
+    fi
+else
+    log_info "Configuração do GRUB mantida como estava"
+    GRUB_CONFIGURED=false
+fi
+
 log_step "Instalação concluída!"
 echo ""
-log_info "🎉 Tema Plymouth instalado com sucesso!"
-echo "  ✓ Tema: $THEME_NAME"
-echo "  ✓ Localização: $DEST_DIR"
-echo "  ✓ Initramfs atualizado"
+if [[ "${GRUB_CONFIGURED:-false}" == true ]]; then
+    log_info "🎉 Tema Plymouth e GRUB configurados!"
+    echo "  ✓ Tema Plymouth: $THEME_NAME"
+    echo "  ✓ Localização: $DEST_DIR"
+    echo "  ✓ GRUB configurado para boot silencioso"
+    echo "  ✓ Timeout GRUB: 0 segundos"
+    echo "  ✓ Initramfs atualizado"
+    echo ""
+    log_warn "📋 Para ver as mudanças:"
+    echo "  1. REINICIE o sistema"
+    echo "  2. Boot será automático e silencioso"
+    echo "  3. Tema Plymouth aparecerá durante boot"
+    echo ""
+    log_info "🔧 Acesso ao menu GRUB:"
+    echo "  • Segure SHIFT durante o boot para acessar menu"
+    echo "  • Ou segure ESC logo após ligar o computador"
+    echo ""
+    log_info "💡 Comandos úteis:"
+    echo "  • Restaurar GRUB: sudo cp $GRUB_BACKUP /etc/default/grub && sudo update-grub"
+else
+    log_info "🎉 Tema Plymouth instalado!"
+    echo "  ✓ Tema Plymouth: $THEME_NAME"
+    echo "  ✓ Localização: $DEST_DIR"
+    echo "  ✓ Initramfs atualizado"
+    echo "  ⚪ GRUB mantido com configurações originais"
+    echo ""
+    log_warn "📋 Para ver o tema Plymouth:"
+    echo "  1. REINICIE o sistema"
+    echo "  2. Tema aparecerá durante boot/shutdown"
+    echo ""
+    log_info "💡 Para configurar GRUB silencioso manualmente:"
+    echo "  • Execute novamente o script e escolha 's'"
+    echo "  • Ou edite /etc/default/grub manualmente"
+fi
 echo ""
-log_warn "📋 Para ver o tema funcionando:"
-echo "  1. REINICIE o sistema"
-echo "  2. O tema aparecerá durante o boot/shutdown"
-echo ""
-log_info "💡 Comandos úteis:"
+log_info "💡 Comandos Plymouth:"
 echo "  • Listar temas: plymouth-set-default-theme --list"
-echo "  • Mudar tema: sudo plymouth-set-default-theme NOME_DO_TEMA"
 echo "  • Testar tema: sudo plymouthd; sudo plymouth --show-splash; sleep 3; sudo plymouth quit"
 echo ""
-log_success "🚀 Pronto para o próximo reinício!"
+log_success "🚀 Sistema configurado com sucesso!"
