@@ -1,0 +1,8 @@
+blur-my-shell@aunetx
+dash-to-dock@micxgx.gmail.com
+dash2dock-lite@icedman.github.com
+compiz-alike-magic-lamp-effect@hermes83.github.com
+trayIconsReloaded@selfmade.pl
+tilingshell@ferrarodomenico.com
+grand-theft-focus@zalckos.github.com
+clipboard-indicator@tudmotu.com
