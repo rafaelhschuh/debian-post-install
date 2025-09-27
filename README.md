@@ -4,8 +4,8 @@ Scripts para padronizar a instalação inicial do Debian e aplicar customizaçõ
 
 ## Arquivos
 
-- `setup.sh` – Instala pacotes essenciais, repositórios, Flatpak, drivers e (opcional) executa customização.
-- `customize.sh` – Restaura extensões do GNOME, aplica configurações e preferências opcionais. (Pode ser executado junto ao setup, será questionado durante o processo)
+- `setup.sh` – Instala pacotes essenciais, repositórios, Flatpak, drivers. Fornece link para customização manual.
+- `customize.sh` – Baixa ZIP de extensões, extrai no diretório correto e aplica configurações básicas do GNOME.
 
 ## Uso Rápido
 
@@ -14,7 +14,7 @@ Durante a execução você poderá:
 - Instalar pacotes essenciais
 - Configurar Flatpak
 - Instalar drivers (Intel/AMD/NVIDIA)
-- Executar customização do GNOME a partir da variável `GITHUB_CUSTOMIZE_URL`
+- Obter link para customização manual do GNOME
 
 Para rodar o script:
 
@@ -31,7 +31,6 @@ Use a flag `--auto` para evitar perguntas após a coleta inicial (ou exporte `AU
 - Flatpak apps: s
 - Linux Toys: n
 - Drivers Intel: s / AMD: n / NVIDIA: n / CUDA: n
-- Customização GNOME: s
 
 Execução direta (defaults):
 ```bash
@@ -50,35 +49,38 @@ sudo \
 	OPT_DRIVERS_AMD=n \
 	OPT_DRIVERS_NVIDIA=s \
 	OPT_NVIDIA_CUDA=n \
-	OPT_RUN_CUSTOMIZE=s \
 	AUTO_MODE=true bash setup.sh --auto --user=seuusuario
 ```
 
 ### customize.sh
-Também suporta modo automático:
-- Flag: `--auto`
-- Variáveis:
-	- `AUTO_INSTALL_EXT=s|n` (default s)
-	- `AUTO_APPLY_SETTINGS=s|n` (default s)
-	- `AUTO_FORCE_OUTSIDE_GNOME=s` para rodar fora do GNOME
+Script simples e automático (sem perguntas):
+- Baixa ZIP fixo de extensões
+- Extrai diretamente em `~/.local/share/gnome-shell/extensions`
+- Aplica configurações básicas do GNOME (bateria, relógio, botões, Nautilus, etc.)
 
-Exemplos:
+Execução:
 ```bash
-# Tudo automático
-bash customize.sh --auto
+# Execução direta
+curl -fsSL https://raw.githubusercontent.com/rafaelhschuh/debian-post-install/refs/heads/main/customize.sh | bash
 
-# Apenas aplicar configurações, sem instalar extensões
-AUTO_MODE=true AUTO_INSTALL_EXT=n bash customize.sh --auto
-
-# Forçar execução fora do GNOME
-AUTO_MODE=true AUTO_FORCE_OUTSIDE_GNOME=s bash customize.sh --auto
+# Ou baixar e executar
+wget https://raw.githubusercontent.com/rafaelhschuh/debian-post-install/refs/heads/main/customize.sh
+bash customize.sh
 ```
 
 
 ## Extensões GNOME
 
-Instala e ativa automaticamente todas as extensões pré-definidas exceto:
-- dash-to-dock@micxgx.gmail.com (instalada mas não ativada)
+O `customize.sh` extrai todas as extensões do ZIP diretamente para o diretório correto. Para ativar:
+```bash
+# Listar extensões disponíveis
+gnome-extensions list
+
+# Ativar uma extensão específica
+gnome-extensions enable nome@dominio.extensao
+
+# Ou usar o Extension Manager (instalado via Flatpak)
+```
 
 ## Remoções Opcionais
 
@@ -105,7 +107,6 @@ flatpak install flathub org.mozilla.firefox
 | Caracteres quebrados (acentos) | Locale não UTF-8 ativo | Exportar `LANG=pt_BR.UTF-8` antes de rodar |
 | Extensão não instala | UUID mudou/versão GNOME nova | Instale manual via loja de extensões e depois adapte a lista |
 | Customize 404 | URL `GITHUB_CUSTOMIZE_URL` incorreta | Ajustar variável no topo do `setup.sh` |
-| Flatpak prompt versão ffmpeg-full | Runtime antigo fixado | Atualizar script (já inclui detecção nas versões recentes) |
 
 ## Aviso
 
