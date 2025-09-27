@@ -443,12 +443,23 @@ if [[ "$OPT_RUN_CUSTOMIZE" == "s" ]]; then
     log_step "Executando customização do GNOME..."
     log_info "Baixando e executando script de customização..."
     
+    # Montar comando conforme modo automático
+    if $AUTO_MODE; then
+        CUSTOMIZE_PIPE="curl -fsSL $GITHUB_CUSTOMIZE_URL | bash -s -- --auto"
+    else
+        CUSTOMIZE_PIPE="curl -fsSL $GITHUB_CUSTOMIZE_URL | bash"
+    fi
+
     # Executar como usuário normal, não como root
-    if sudo -u "$SUDO_USER" bash -c "curl -fsSL $GITHUB_CUSTOMIZE_URL | bash"; then
+    if sudo -u "$SUDO_USER" bash -c "$CUSTOMIZE_PIPE"; then
         log_success "Customização do GNOME executada com sucesso"
     else
         log_warn "Falha na customização do GNOME. Execute manualmente se necessário:"
-        echo "  curl -fsSL $GITHUB_CUSTOMIZE_URL | bash"
+        if $AUTO_MODE; then
+            echo "  curl -fsSL $GITHUB_CUSTOMIZE_URL | bash -s -- --auto"
+        else
+            echo "  curl -fsSL $GITHUB_CUSTOMIZE_URL | bash"
+        fi
     fi
 fi
 

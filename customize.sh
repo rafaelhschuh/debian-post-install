@@ -4,6 +4,35 @@
 
 set -euo pipefail  # Para em caso de erro
 
+# ================= MODO AUTOMÁTICO =================
+# Use: customize.sh --auto (usa defaults) ou variáveis de ambiente:
+#   AUTO_MODE=true
+#   AUTO_INSTALL_EXT=s|n
+#   AUTO_APPLY_SETTINGS=s|n
+#   AUTO_FORCE_OUTSIDE_GNOME=s (permite rodar fora do GNOME)
+AUTO_MODE=false
+AUTO_INSTALL_EXT="s"
+AUTO_APPLY_SETTINGS="s"
+AUTO_FORCE_OUTSIDE_GNOME="n"
+
+for arg in "$@"; do
+    case "$arg" in
+        --auto) AUTO_MODE=true ;;
+        --no-ext) AUTO_INSTALL_EXT="n" ;;
+        --no-settings) AUTO_APPLY_SETTINGS="n" ;;
+    esac
+done
+
+if [[ "${AUTO_MODE}" == true ]]; then
+    AUTO_INSTALL_EXT="${AUTO_INSTALL_EXT:-s}"
+    AUTO_APPLY_SETTINGS="${AUTO_APPLY_SETTINGS:-s}"
+fi
+
+# Overrides por variáveis de ambiente (se definidas)
+[[ -n "${AUTO_INSTALL_EXT_ENV:-}" ]] && AUTO_INSTALL_EXT="$AUTO_INSTALL_EXT_ENV"
+[[ -n "${AUTO_APPLY_SETTINGS_ENV:-}" ]] && AUTO_APPLY_SETTINGS="$AUTO_APPLY_SETTINGS_ENV"
+[[ -n "${AUTO_FORCE_OUTSIDE_GNOME_ENV:-}" ]] && AUTO_FORCE_OUTSIDE_GNOME="$AUTO_FORCE_OUTSIDE_GNOME_ENV"
+
 # Cores para output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -30,10 +59,15 @@ log_success() {
 
 # Função para confirmar ação
 confirm() {
+    local prompt="$1"; local default="${2:-s}"; local answer
+    if [[ "$AUTO_MODE" == true ]]; then
+        if [[ "$default" =~ ^[sSyY]$ ]]; then return 0; else return 1; fi
+    fi
     while true; do
-        read -p "$1 (s/n): " yn
-        case $yn in
-            [Ss]* ) return 0;;
+        read -p "$prompt (s/n) [default: $default]: " answer
+        if [[ -z "$answer" ]]; then answer="$default"; fi
+        case $answer in
+            [SsYy]* ) return 0;;
             [Nn]* ) return 1;;
             * ) echo "Por favor, responda s (sim) ou n (não).";;
         esac
@@ -64,10 +98,14 @@ cleanup() {
 trap cleanup EXIT
 
 # Verificar se está executando no GNOME
-if [ "$XDG_CURRENT_DESKTOP" != "GNOME" ] && [ "$GDMSESSION" != "gnome" ]; then
+if [ "${XDG_CURRENT_DESKTOP:-}" != "GNOME" ] && [ "${GDMSESSION:-}" != "gnome" ]; then
     log_warn "Este script foi projetado para GNOME. Ambiente atual: ${XDG_CURRENT_DESKTOP:-unknown}"
-    if ! confirm "Deseja continuar mesmo assim?"; then
-        exit 0
+    if [[ "$AUTO_FORCE_OUTSIDE_GNOME" == "s" ]]; then
+        log_info "Prosseguindo fora do GNOME (forçado)."
+    else
+        if ! confirm "Deseja continuar mesmo assim?" n; then
+            exit 0
+        fi
     fi
 fi
 
@@ -200,7 +238,7 @@ else
 fi
 
 # Instalar extensões da lista integrada
-if confirm "Deseja instalar as extensões GNOME selecionadas?"; then
+if { [[ "$AUTO_MODE" == true && "$AUTO_INSTALL_EXT" == "s" ]] || [[ "$AUTO_MODE" == false && confirm "Deseja instalar as extensões GNOME selecionadas?" s ]]; }; then
     log_info "Instalando extensões GNOME..."
     
     total_extensions=${#EXTENSIONS_LIST[@]}
@@ -220,7 +258,7 @@ if confirm "Deseja instalar as extensões GNOME selecionadas?"; then
 fi
 
 # Aplicar configurações otimizadas do GNOME
-if confirm "Deseja aplicar configurações otimizadas do GNOME?"; then
+if { [[ "$AUTO_MODE" == true && "$AUTO_APPLY_SETTINGS" == "s" ]] || [[ "$AUTO_MODE" == false && confirm "Deseja aplicar configurações otimizadas do GNOME?" s ]]; }; then
     log_info "Aplicando configurações do GNOME baseadas no seu perfil atual..."
     
     # Configurações da interface
@@ -259,7 +297,7 @@ log_info "Para aplicar todas as mudanças:"
 
 if [ "$XDG_SESSION_TYPE" = "wayland" ]; then
     log_warn "Sessão Wayland detectada - Faça logout/login ou reinicie o sistema"
-    if confirm "Deseja fazer logout agora?"; then
+    if { [[ "$AUTO_MODE" == true ]] && false; } || confirm "Deseja fazer logout agora?" n; then
         gnome-session-quit --logout --no-prompt
     fi
 else
@@ -268,3 +306,11 @@ else
 fi
 
 log_success "Customização do GNOME concluída!"
+
+if [[ "$AUTO_MODE" == true ]]; then
+    echo ""
+    log_info "Resumo (modo automático):"
+    echo "  Extensões instaladas: $AUTO_INSTALL_EXT"
+    echo "  Configurações aplicadas: $AUTO_APPLY_SETTINGS"
+    echo "  Forçou fora do GNOME: $AUTO_FORCE_OUTSIDE_GNOME"
+fi
