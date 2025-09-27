@@ -257,7 +257,7 @@ ESSENTIAL_PACKAGES=(
     "vim"
     "btop"
     "htop"
-    "neofetch"
+    "fastfetch"
     "unzip"
     "gnome-tweaks"
     "gnome-shell-extensions"
