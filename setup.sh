@@ -6,7 +6,7 @@
 set -euo pipefail  # Para em caso de erro
 
 # ===== CONFIGURAÇÃO =====
-GITHUB_CUSTOMIZE_URL="https://raw.githubusercontent.com/usuario/repositorio/main/customize.sh"
+GITHUB_CUSTOMIZE_URL="https://raw.githubusercontent.com/rafaelhschuh/debian-post-install/refs/heads/main/customize.sh"
 
 # Cores para output
 RED='\033[0;31m'
@@ -332,7 +332,7 @@ if [[ "$OPT_INSTALL_FLATPAK_APPS" == "s" ]]; then
     log_step "Instalando aplicativos Flatpak..."
     
     FLATPAK_APPS=(
-        "org.gnome.Gedit"
+        "org.gnome.gedit"
         "org.onlyoffice.desktopeditors"
         "org.gnome.NetworkDisplays"
         "org.angryip.ipscan"
@@ -364,12 +364,17 @@ fi
 # Instalação do Linux Toys (decisão prévia)
 if [[ "$OPT_LINUX_TOYS" == "s" ]]; then
     log_step "Instalando Linux Toys..."
-    log_info "Baixando e executando instalador do Linux Toys..."
-    
-    if yes | sh -c "$(curl -fsSL https://raw.githubusercontent.com/psygreg/linuxtoys/master/install.sh)"; then
-        log_success "Linux Toys instalado com sucesso"
+    log_info "Baixando e executando instalador do Linux Toys (não-interativo)..."
+    if curl -fsSL https://raw.githubusercontent.com/psygreg/linuxtoys/master/install.sh -o /tmp/linuxtoys-install.sh; then
+        chmod +x /tmp/linuxtoys-install.sh
+        if yes | /tmp/linuxtoys-install.sh >/dev/null 2>&1; then
+            log_success "Linux Toys instalado com sucesso"
+        else
+            log_warn "Falha ao instalar Linux Toys"
+        fi
+        rm -f /tmp/linuxtoys-install.sh
     else
-        log_warn "Falha ao instalar Linux Toys"
+        log_warn "Download do instalador do Linux Toys falhou"
     fi
 fi
 
