@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script para instalar tema Plymouth e configurar GRUB (opcional)
+# Script para instalar tema Plymouth, tema GRUB e configurar GRUB (opcional)
 
 set -euo pipefail
 
@@ -28,23 +28,7 @@ log_success() {
 }
 
 log_step() {
-    echo -eecho ""
-log_warn "📋 PRÓXIMOS PASSOS:"
-if [[ "${PLYMOUTH_INSTALLED:-false}" == true || "${GRUB_THEME_INSTALLED:-false}" == true || "${GRUB_CONFIGURED:-false}" == true ]]; then
-    echo "  1. REINICIE o sistema para ver as mudanças"
-    if [[ "${PLYMOUTH_INSTALLED:-false}" == true ]]; then
-        echo "  2. Tema Plymouth aparecerá durante boot/shutdown"
-    fi
-    if [[ "${GRUB_THEME_INSTALLED:-false}" == true ]]; then
-        echo "  2. Tema GRUB aparecerá no menu de boot"
-    fi
-    if [[ "${GRUB_CONFIGURED:-false}" == true ]]; then
-        echo "  3. Boot será automático e silencioso"
-        echo "  4. Menu GRUB acessível segurando SHIFT durante boot"
-    fi
-else
-    echo "  1. Execute novamente o script para configurar Plymouth/GRUB"
-fiA]${NC} $1"
+    echo -e "${BLUE}[ETAPA]${NC} $1"
 }
 
 # Verificar se está sendo executado como root
