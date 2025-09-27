@@ -227,6 +227,13 @@ if confirm "Deseja aplicar configurações otimizadas do GNOME?"; then
     gsettings set org.gnome.desktop.interface show-battery-percentage true 2>/dev/null || true
     gsettings set org.gnome.desktop.interface clock-show-weekday true 2>/dev/null || true
     gsettings set org.gnome.desktop.interface clock-show-seconds false 2>/dev/null || true
+    # Botões de janela (adiciona minimizar e maximizar)
+    # Formatos comuns: 'appmenu:minimize,maximize,close' ou 'close,minimize,maximize'
+    if gsettings set org.gnome.desktop.wm.preferences button-layout 'appmenu:minimize,maximize,close' 2>/dev/null; then
+    else
+        # fallback sem appmenu (GNOME removendo appmenu em versões recentes)
+        gsettings set org.gnome.desktop.wm.preferences button-layout 'close,minimize,maximize' 2>/dev/null || true
+    fi
     
     # Configurações do Nautilus 
     gsettings set org.gnome.nautilus.preferences default-folder-viewer 'list-view' 2>/dev/null || true

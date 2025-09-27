@@ -280,26 +280,19 @@ for package in "${ESSENTIAL_PACKAGES[@]}"; do
     fi
 done
 
-# Remover pacotes desnecessários (decisão prévia)
+# Remover LibreOffice e jogos
 if [[ "$OPT_REMOVE_GAMES" == "s" ]]; then
-    log_step "Removendo pacotes desnecessários..."
-    REMOVE_PACKAGES=(
-        "libreoffice-common"
-        "gnome-games"
-        "aisleriot"
-        "gnome-mahjongg"
-        "gnome-mines"
-        "gnome-sudoku"
+    log_step "Removendo LibreOffice e jogos GNOME (modo simples)..."
+    REMOVE_PKGS=(
+        libreoffice-common gnome-games
     )
-    
-    for package in "${REMOVE_PACKAGES[@]}"; do
-        if dpkg -l | grep -q "^ii  $package "; then
-            log_info "Removendo $package..."
-            apt purge -y "$package" 2>/dev/null || log_warn "$package não encontrado"
-        fi
-    done
-    
-    apt autoremove -y && apt autoclean
+    if apt purge -y "${REMOVE_PKGS[@]}" --autoremove 2>/dev/null; then
+        log_success "Pacotes solicitados purgados (os ausentes foram ignorados)."
+    else
+        log_warn "Alguns pacotes podem já não estar instalados ou falhou parte da remoção."
+    fi
+    apt autoremove -y --purge || true
+    apt autoclean || true
     log_success "Limpeza concluída."
 fi
 
