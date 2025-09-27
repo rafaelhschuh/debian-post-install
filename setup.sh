@@ -331,6 +331,7 @@ if [[ "$OPT_INSTALL_FLATPAK_APPS" == "s" ]]; then
         "com.anydesk.Anydesk"
         "org.localsend.localsend_app"
         "io.missioncenter.MissionCenter"
+        "app.zen_browser.zen"
         "com.google.Chrome"
         "com.rtosta.zapzap"
         "it.mijorus.gearlever"
