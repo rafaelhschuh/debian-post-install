@@ -307,7 +307,7 @@ fi
 if [[ "$OPT_REMOVE_FIREFOX" == "s" ]]; then
     log_step "Removendo Firefox ESR..."
     if dpkg -l | grep -q "^ii  firefox-esr "; then
-        apt purge -y firefox-esr firefox-esr-l10n-* || log_warn "Falha ao remover Firefox ESR"
+        apt purge -y firefox-esr || log_warn "Falha ao remover Firefox ESR"
         apt autoremove -y && apt autoclean
         log_success "Firefox ESR removido."
     else
@@ -338,7 +338,6 @@ if [[ "$OPT_INSTALL_FLATPAK_APPS" == "s" ]]; then
         "org.angryip.ipscan"
         "com.notesnook.Notesnook"
         "com.anydesk.Anydesk"
-        "org.freedesktop.Platform.ffmpeg-full"
         "org.localsend.localsend_app"
         "io.missioncenter.MissionCenter"
         "com.google.Chrome"
@@ -349,9 +348,9 @@ if [[ "$OPT_INSTALL_FLATPAK_APPS" == "s" ]]; then
     )
     
     for app in "${FLATPAK_APPS[@]}"; do
-        if ! flatpak list | grep -q "$app"; then
+        if ! flatpak list | grep -Fq "$app"; then
             log_info "Instalando $app..."
-            if flatpak install -y flathub "$app" 2>/dev/null; then
+            if flatpak install --noninteractive -y flathub "$app" >/dev/null 2>&1; then
                 log_success "$app instalado"
             else
                 log_warn "Falha ao instalar $app (pode não estar disponível)"
@@ -367,7 +366,7 @@ if [[ "$OPT_LINUX_TOYS" == "s" ]]; then
     log_step "Instalando Linux Toys..."
     log_info "Baixando e executando instalador do Linux Toys..."
     
-    if curl -fsSL https://raw.githubusercontent.com/psygreg/linuxtoys/master/install.sh | sh; then
+    if yes | sh -c "$(curl -fsSL https://raw.githubusercontent.com/psygreg/linuxtoys/master/install.sh)"; then
         log_success "Linux Toys instalado com sucesso"
     else
         log_warn "Falha ao instalar Linux Toys"
